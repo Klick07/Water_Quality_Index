@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+body {
+  background-color: #1a1a1b;
+}
+
+html, body {
+  overscroll-behavior: none;
+}
+
+:root {
+  --main-bg-color: #f0f0f0;
+  --main-text-color: #333333;
+  height: 100vh;
+}

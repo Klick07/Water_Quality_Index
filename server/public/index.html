@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ganga WQI – Backend Test UI</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    input {
+      padding: 8px;
+      width: 300px;
+    }
+
+    button {
+      padding: 8px 12px;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .details {
+      margin-top: 10px;
+    }
+
+    .bad { color: red; font-weight: bold; }
+    .warn { color: orange; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>Ganga WQI – Backend Verification UI</h1>
+
+<input id="query" placeholder="Enter state or location" />
+<button onclick="search()">Search</button>
+
+<div id="results"></div>
+
+<script>
+const API = "/api/wqi";
+
+/* =========================
+   SEARCH
+   ========================= */
+async function search() {
+  // const q = document.getElementById("query").value.trim();
+  if (!q) return alert("Enter a state or location");
+
+  const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+  const json = await res.json();
+
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  if (!json.success || json.data.length === 0) {
+    container.innerHTML = "<p>No stations found</p>";
+    return;
+  }
+
+  json.data.forEach(st => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h3>${st.location}</h3>
+      <p><b>State:</b> ${st.state}</p>
+      <p><b>WQI:</b> ${st.wqi} (${st.category})</p>
+
+      <button onclick="loadDetails('${st.station_code}', this)">
+        View Details
+      </button>
+
+      <div class="details"></div>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+/* =========================
+   LOAD DETAILS + GRAPH
+   ========================= */
+async function loadDetails(stationCode, btn) {
+  const box = btn.parentElement.querySelector(".details");
+  box.innerHTML = "Loading details...";
+
+  const detailRes = await fetch(`${API}/details/${stationCode}`);
+  const detailJson = await detailRes.json();
+  if (!detailJson.success) {
+    box.innerHTML = "<p>Failed to load details</p>";
+    return;
+  }
+
+  const tsRes = await fetch(`${API}/timeseries/${stationCode}`);
+  const tsJson = await tsRes.json();
+  if (!tsJson.success) {
+    box.innerHTML = "<p>No time-series data</p>";
+    return;
+  }
+
+  const d = detailJson.data;
+  const ts = tsJson.data;
+  const chartId = `chart-${stationCode}`;
+
+  box.innerHTML = `
+    <hr/>
+
+    <p><b>Alarming Parameters:</b>
+      ${renderList(d.alarming_parameters, "bad")}
+    </p>
+
+    <p><b>Warning Parameters:</b>
+      ${renderList(d.warning_parameters, "warn")}
+    </p>
+
+    <h4>WQI & Alarming Parameters (Time Series)</h4>
+    <canvas id="${chartId}" height="300"></canvas>
+
+    <h4>Health Risks & Precautions</h4>
+    ${renderHealth(d.health_risks)}
+  `;
+
+  drawMultiLineChart(chartId, ts, d.alarming_parameters);
+}
+
+/* =========================
+   MULTI-LINE CHART
+   ========================= */
+function drawMultiLineChart(canvasId, ts, alarmingParams) {
+  const ctx = document.getElementById(canvasId).getContext("2d");
+
+  const labels = ts.map(r =>
+    new Date(r.recorded_at).toLocaleDateString()
+  );
+
+  const datasets = [];
+
+  /* ---- WQI line (always) ---- */
+  datasets.push({
+    label: "WQI",
+    data: ts.map(r => r.wqi),
+    borderColor: "black",
+    borderWidth: 3,
+    yAxisID: "y-wqi",
+    tension: 0.3
+  });
+
+  /* ---- Alarming parameters ---- */
+  const colors = {
+    ph: "blue",
+    dissolved_oxygen: "green",
+    bod: "red",
+    nitrate: "orange",
+    fecal_coliform: "purple",
+    total_coliform: "brown"
+  };
+
+  alarmingParams.forEach(param => {
+    datasets.push({
+      label: param.toUpperCase(),
+      data: ts.map(r => r[param]),
+      borderColor: colors[param] || "gray",
+      borderWidth: 2,
+      yAxisID: `y-${param}`,
+      tension: 0.3
+    });
+  });
+
+  /* ---- Axes ---- */
+  const scales = {
+    "y-wqi": {
+      type: "linear",
+      position: "left",
+      title: { display: true, text: "WQI" }
+    }
+  };
+
+  alarmingParams.forEach(param => {
+    scales[`y-${param}`] = {
+      type: "linear",
+      position: "right",
+      grid: { drawOnChartArea: false },
+      title: { display: true, text: param }
+    };
+  });
+
+  new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      scales
+    }
+  });
+}
+
+/* =========================
+   HELPERS
+   ========================= */
+function renderList(list, cls) {
+  if (!list || list.length === 0) return "None";
+  return list.map(p => `<span class="${cls}">${p}</span>`).join(", ");
+}
+
+function renderHealth(risks) {
+  if (!risks || risks.length === 0)
+    return "<p>No immediate health risks</p>";
+
+  return risks.map(r => `
+    <p>
+      <b>${r.parameter}</b><br/>
+      Disease: ${r.disease}<br/>
+      Precaution: ${r.precaution}
+    </p>
+  `).join("");
+}
+</script>
+
+</body>
+</html>

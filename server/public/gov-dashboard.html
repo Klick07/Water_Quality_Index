@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gov Dashboard – Ganga WQI</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 5px;
+    }
+    .card {
+      background: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      max-width: 600px;
+    }
+    input, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+    }
+    button {
+      cursor: pointer;
+    }
+    pre {
+      background: #eee;
+      padding: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Government Dashboard</h1>
+<button onclick="logout()">Logout</button>
+
+<div class="card">
+  <h3>Upload Latest Water Quality</h3>
+
+  <input id="l_station" placeholder="Station Code">
+  <input id="l_state" placeholder="State">
+  <input id="l_ph_min" placeholder="pH Min">
+  <input id="l_ph_max" placeholder="pH Max">
+  <input id="l_do_min" placeholder="DO Min">
+  <input id="l_do_max" placeholder="DO Max">
+
+  <button onclick="uploadLatest()">Upload Latest</button>
+</div>
+
+<div class="card">
+  <h3>Upload Time-Series Data</h3>
+
+  <input id="t_station" placeholder="Station Code">
+  <input id="t_ph" placeholder="pH">
+  <input id="t_do" placeholder="Dissolved Oxygen">
+  <input id="t_bod" placeholder="BOD">
+  <input id="t_nitrate" placeholder="Nitrate">
+  <input id="t_wqi" placeholder="WQI">
+
+  <button onclick="uploadTimeseries()">Upload Timeseries</button>
+</div>
+
+<h3>Server Response</h3>
+<pre id="output">No response</pre>
+
+<script>
+const accessToken = sessionStorage.getItem("accessToken");
+const refreshToken = sessionStorage.getItem("refreshToken");
+
+if (!accessToken) {
+  window.location.href = "/gov-login.html";
+}
+
+function show(data) {
+  document.getElementById("output").textContent =
+    JSON.stringify(data, null, 2);
+}
+
+async function uploadLatest() {
+  const body = {
+    station_code: document.getElementById("l_station").value,
+    state: document.getElementById("l_state").value,
+    ph_min: document.getElementById("l_ph_min").value,
+    ph_max: document.getElementById("l_ph_max").value,
+    dissolved_oxygen_min: document.getElementById("l_do_min").value,
+    dissolved_oxygen_max: document.getElementById("l_do_max").value
+  };
+
+  const res = await fetch("/gov/water-quality/latest", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + accessToken
+    },
+    body: JSON.stringify(body)
+  });
+
+  show(await res.json());
+}
+
+async function uploadTimeseries() {
+  const body = {
+    station_code: document.getElementById("t_station").value,
+    ph: document.getElementById("t_ph").value,
+    dissolved_oxygen: document.getElementById("t_do").value,
+    bod: document.getElementById("t_bod").value,
+    nitrate: document.getElementById("t_nitrate").value,
+    wqi: document.getElementById("t_wqi").value
+  };
+
+  const res = await fetch("/gov/water-quality/timeseries", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + accessToken
+    },
+    body: JSON.stringify(body)
+  });
+
+  show(await res.json());
+}
+
+async function logout() {
+  await fetch("/gov/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  sessionStorage.clear();
+  window.location.href = "/gov-login.html";
+}
+</script>
+
+</body>
+</html>

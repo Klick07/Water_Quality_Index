@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gov Login – Ganga WQI</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #eef2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      width: 320px;
+      box-shadow: 0 0 10px rgba(0,0,0,.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>Gov Portal Login</h2>
+
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+
+  <button onclick="login()">Login</button>
+</div>
+
+<script>
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/gov/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.message || "Login failed");
+    return;
+  }
+
+  sessionStorage.setItem("accessToken", data.accessToken);
+  sessionStorage.setItem("refreshToken", data.refreshToken);
+
+  window.location.href = "/gov-dashboard.html";
+}
+</script>
+
+</body>
+</html>
