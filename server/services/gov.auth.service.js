@@ -48,7 +48,7 @@ exports.login = async (username, password) => {
 
   await saveRefreshToken(user.id, refreshHash, expiresAt);
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, username: user.username };
 };
 
 exports.refresh = async (refreshToken) => {

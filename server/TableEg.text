@@ -1,0 +1,98 @@
+CREATE TABLE disease_mapping (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    parameter VARCHAR(50) NOT NULL,
+    condition_rule VARCHAR(50) NOT NULL,
+    disease TEXT NOT NULL,
+    precaution TEXT NOT NULL,
+    CONSTRAINT disease_mapping_pkey PRIMARY KEY (id)
+);
+INSERT INTO disease_mapping (parameter, condition_rule, disease, precaution) VALUES
+(
+  'fecal_coliform',
+  '>2500',
+  'Cholera, Typhoid, Dysentery, Gastroenteritis',
+  'Do not drink river water directly; boil water for at least 5-10 minutes before drinking; use chlorine tablets or household water filters; wash hands with soap after contact; keep children away from river water'
+),
+(
+  'total_coliform',
+  '>5000',
+  'Waterborne infections, Gastrointestinal illness',
+  'Use water only after boiling or filtration; avoid using river water for cooking; store drinking water in clean, covered containers; clean utensils with treated water only'
+),
+(
+  'bod',
+  '>3',
+  'Skin infections, Eye irritation',
+  'Avoid bathing or swimming in river water; do not allow open wounds to touch water; wash skin immediately with clean water if contact occurs; avoid washing clothes in the river'
+),
+(
+  'dissolved_oxygen',
+  '<5',
+  'Indirect health risks due to polluted water conditions',
+  'Avoid recreational activities in the river; do not bathe or swim; avoid fishing or consuming fish from this water; limit exposure especially for elderly and children'
+),
+(
+  'ph',
+  '<6.5 or >8.5',
+  'Skin irritation, Eye irritation',
+  'Avoid direct contact with water; do not splash water on face or eyes; rinse immediately with clean water if exposed; wear protective footwear near the river'
+),
+(
+  'nitrate',
+  '>45',
+  'Methemoglobinemia (Blue Baby Syndrome)',
+  'Do not use this water for infants or pregnant women; avoid using for drinking or cooking; use packaged or properly treated water only'
+),
+(
+  'conductivity',
+  '>500',
+  'Gastrointestinal discomfort, Long-term health risks',
+  'Avoid long-term consumption; use RO or filtered water; drink treated or bottled water; people with blood pressure issues should avoid using this water'
+),
+(
+  'fecal_streptococci',
+  '>100',
+  'Urinary tract infections, Gastrointestinal illness',
+  'Avoid swimming or bathing; maintain personal hygiene after accidental exposure; change clothes immediately after contact; keep pets away from contaminated water'
+);
+CREATE TABLE water_quality_timeseries (
+    id SERIAL PRIMARY KEY,
+    station_code VARCHAR(20) NOT NULL,
+    recorded_at TIMESTAMP NOT NULL,
+    ph NUMERIC(4,2),
+    dissolved_oxygen NUMERIC(4,2),
+    bod NUMERIC(4,2),
+    nitrate NUMERIC(6,2),
+    fecal_coliform INTEGER,
+    total_coliform INTEGER,
+    wqi INTEGER,
+    CONSTRAINT fk_station
+        FOREIGN KEY (station_code)
+        REFERENCES water_quality_data(station_code)
+        ON DELETE CASCADE
+);
+INSERT INTO water_quality_timeseries (
+    station_code,
+    recorded_at,
+    ph,
+    dissolved_oxygen,
+    bod,
+    nitrate,
+    fecal_coliform,
+    total_coliform,
+    wqi
+)
+SELECT
+    s.station_code,
+    (CURRENT_DATE - d.day_offset)::timestamp + INTERVAL '10 hours' AS recorded_at,
+
+    ROUND((6.5 + random() * 2.5)::numeric, 2) AS ph,                 -- 6.5 – 9.0
+    ROUND((4 + random() * 4)::numeric, 2) AS dissolved_oxygen,       -- 4 – 8 mg/L
+    ROUND((1 + random() * 6)::numeric, 2) AS bod,                    -- 1 – 7 mg/L
+    ROUND((5 + random() * 50)::numeric, 2) AS nitrate,               -- 5 – 55 mg/L
+    (200 + random() * 5000)::int AS fecal_coliform,                  -- realistic range
+    (500 + random() * 8000)::int AS total_coliform,
+
+    (40 + random() * 60)::int AS wqi                                  -- 40 – 100
+FROM water_quality_data s
+CROSS JOIN generate_series(0, 13) AS d(day_offset);

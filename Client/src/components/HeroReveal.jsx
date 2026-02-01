@@ -69,7 +69,6 @@ export default function RevealSection() {
       </section>
 
       {/* Extra space so the animation has room to finish */}
-      <div className="h-[50vh] bg-white" />
     </div>
   );
 }

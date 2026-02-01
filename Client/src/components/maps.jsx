@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 // 1. Sample Data - You can later replace this with props or an API call
 const hotspotData = [
   { id: 1, lat: 18.5204, lng: 73.8567, radius: 1000, name: "High Activity Zone A" },
-  { id: 2, lat: 18.5500, lng: 73.8800, radius: 1500, name: "High Activity Zone B" },
+  { id: 2, lat: 18.5500, lng: 76.8800, radius: 1500, name: "High Activity Zone B" },
   { id: 3, lat: 18.5100, lng: 73.8200, radius: 800,  name: "High Activity Zone C" },
 ];
 
